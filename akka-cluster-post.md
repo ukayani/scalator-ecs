@@ -117,7 +117,7 @@ Once our artifact is published we will tackle the problem of making nodes addres
 
 In order to manage the seed list of every node we will utilize an Akka library called ConstructR which uses Apache Zookeeper to store a centralized seed list.
 
-We have created a sample clustered application which addresses the steps and challenges above. The sample application can be found on Github at [Movie Ticket Booking Application](https://github.com/LoyaltyOne/theatre-booking-akka-example)
+We have created a sample clustered application which addresses the steps and challenges above. The sample application can be found on Github at [Theatre Booking Application](https://github.com/LoyaltyOne/theatre-booking-akka-example)
 
 #### Dockerizing Applications with SBT Native Packager
 
@@ -141,10 +141,10 @@ lazy val root = (project in file(".")).enablePlugins(JavaAppPackaging)
 dockerRepository := Some("loyaltyone")
 ```
 
-We want our image to be published to `loyaltyone/theatre-booking` on DockerHub so we need to ensure our project name is `theatre-booking` in `build.sbt`:
+We want our image to be published to `loyaltyone/theatre-example` on DockerHub so we need to ensure our project name is `theatre-booking` in `build.sbt`:
 
 ```scala
-name := "theatre-booking"
+name := "theatre-example"
 ```
 
 When we publish our image, the build's `version` property will be used to tag our image. We would also like the image to be tagged with the `latest` tag. This tag will always point to the most recent image we publish. To set this behaviour we can set `dockerUpdateLatest`:
@@ -169,7 +169,7 @@ Once logged in, we can publish our image by running
 $ sbt docker:publish
 ```
 
-Our image is now on DockerHub as `loyaltyone/theatre-booking:latest`
+Our image is now on DockerHub as `loyaltyone/theatre-example:latest`
 
 #### Making Nodes Addressable Across ECS Container Instances
 
@@ -400,8 +400,8 @@ Below is a snippet of a Task Definition from our CloudFormation [template](https
       "Type": "AWS::ECS::TaskDefinition",
       "Properties": {
         "ContainerDefinitions": [{
-          "Name": "theatre-booking",
-          "Image": "loyaltyone/theatre-booking:latest",
+          "Name": "theatre-example",
+          "Image": "loyaltyone/theatre-example:latest",
           "PortMappings": [{
             "ContainerPort": 8080,
             "HostPort": 0
@@ -450,7 +450,7 @@ Below is a snippet of a Service Definition from our CloudFormation [template](ht
                             "Ref": "TargetGroup"
                         },
                         "ContainerPort": 8080,
-                        "ContainerName": "theatre-booking"
+                        "ContainerName": "theatre-example"
                     }
                 ],
                 "Cluster": "akka-services",
