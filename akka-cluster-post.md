@@ -203,7 +203,7 @@ How can we get around this problem? Luckily, Akka provides a way to advertise no
 
 Akka Remoting handles the network level communication for Akka Cluster, so we will configure Akka Remoting. We can achieve the desired behaviour by configuring both a `hostname` and `bind-hostname` along with their port counterparts in `src/main/resources/application.conf`:
 
-```json
+```
 akka.remote {
     enabled-transports = ["akka.remote.netty.tcp"]
     netty.tcp {
