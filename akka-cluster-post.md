@@ -4,9 +4,9 @@ typora-copy-images-to: ./images
 
 # Deploying Clustered Akka applications on Amazon ECS
 
-At LoyaltyOne, we recently started to containerize our services and deploy them to Amazon ECS; a platform for running docker containers. 
+At LoyaltyOne, we recently started to containerize our services and deploy them to Amazon ECS; a platform for running Docker containers. 
 
-Our team maintains a service powered by a multi-node Akka cluster. Akka Cluster enables us to build distributed, fault-tolerant services which can span multiple machines. Given our recent move to docker, the team wanted to deploy our clustered service using the same platform we use for all services: Amazon ECS. In this post we will cover the basics of Amazon ECS along with a strategy for deploying clustered Akka applications on it.
+Our team maintains a service powered by a multi-node Akka cluster. Akka cluster enables us to build distributed, fault-tolerant services which can span multiple machines. Given our recent move to Docker, the team wanted to deploy our clustered service using the same platform we use for all services: Amazon ECS. In this post we will cover the basics of Amazon ECS along with a strategy for deploying clustered Akka applications on it.
 
 Before we dive into the specifics of Clustered Akka service deployments, lets go through some Amazon ECS basics:
 
@@ -94,7 +94,7 @@ But how can a node join a cluster if it is the first node to join? Isn’t this 
 
 Now that we have an understanding of cluster formation we can discuss some of the challenges present when deploying to ECS:
 
-- All nodes must run inside docker containers 
+- All nodes must run inside Docker containers 
 - All nodes receive cluster level communication via their **remoting port**, hence they must be addressable on this port from other container instances in the ECS cluster
 - One or more seed nodes must be configured to bootstrap the cluster
 
@@ -135,7 +135,7 @@ Next, in our `build.sbt`, we will enable the plugin on our single module SBT pro
 lazy val root = (project in file(".")).enablePlugins(JavaAppPackaging)
 ```
 
- We can now specify a Docker registry to which we will publish our image. In our example, we will publish to the LoyaltyOne DockerHub repository:
+ We can now specify a Docker registry to which we will publish our image. In our example, we will publish to the LoyaltyOne Docker Hub repository:
 
 ```scala
 dockerRepository := Some("loyaltyone")
@@ -147,7 +147,7 @@ We want our image to be published to `loyaltyone/theatre-booking` on DockerHub s
 name := "theatre-booking"
 ```
 
-When we publish our image, the `build.sbt` `version` property will be used to tag our image. We would also like the image to be tagged with the `latest` tag. This tag will always point to the most recent image we publish. To set this behaviour we can set `dockerUpdateLatest`:
+When we publish our image, the build's `version` property will be used to tag our image. We would also like the image to be tagged with the `latest` tag. This tag will always point to the most recent image we publish. To set this behaviour we can set `dockerUpdateLatest`:
 
 ```scala
 dockerUpdateLatest := true
@@ -195,7 +195,7 @@ Node A: eth0/172.17.0.2  Port Bindings: 2552 -> 2552
 Node B: eth0/172.18.0.2  Port Bindings: 2552 -> 2552 (Seed)
 ```
 
-When Node A tries to join Node B to form a cluster, it will try to reach Node B at `172.18.0.2:2552`. For this to work, Host A would need to know how to route packets to `172.18.0.2`; which it doesn't. Unfortunately, ECS does not currently provide a routing mechanism for containers to directly address eachother across host machines.
+When Node A tries to join Node B to form a cluster, it will try to reach Node B at `172.18.0.2:2552`. For this to work, Host A would need to know how to route packets to `172.18.0.2`; which it doesn't. Unfortunately, ECS does not currently provide a routing mechanism for containers to directly address each other across host machines.
 
 How can we get around this problem? Luckily, Akka provides a way to advertise nodes on an address different than what they bind to. We need nodes to advertise themselves using the port and IP of their *host* rather than their container port and IP.
 
