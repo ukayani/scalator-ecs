@@ -105,7 +105,7 @@ We will discuss strategies to overcome these challenges under the constraints of
 - JDK8+
 - Docker
 - SBT
-- An existing ECS Cluster (insert link to template)
+- An existing ECS Cluster
 - Access to an AWS Account
 - Working knowledge of Docker
 
@@ -265,7 +265,7 @@ What if, when our containers launch, they could query a local service on the hos
 
 ##### Mirror, Mirror, On the Wall, What is My Host Port?
 
-We decided to create such a service; it is called **Docker Mirror**. It is intended to be run as a container on every host in the ECS Cluster, in the same bridge network as all containers. When a container needs to see it's port binding information, it can query Docker Mirror running on it's host machine to easily obtain this information. Instructions for how to run Docker Mirror in your cluster can be found at it's Github [README](https://github.com/LoyaltyOne/docker-mirror). We also have an Amazon CloudFormation template to launch an ECS Cluster with Docker Mirror at [Insert ECS Template Link]
+We decided to create such a service; it is called **Docker Mirror**. It is intended to be run as a container on every host in the ECS Cluster, in the same bridge network as all containers. When a container needs to see it's port binding information, it can query Docker Mirror running on it's host machine to easily obtain this information. Instructions for how to run Docker Mirror in your cluster can be found at it's Github [README](https://github.com/LoyaltyOne/docker-mirror). We also have an Amazon CloudFormation template to launch an ECS Cluster with Docker Mirror at [ECS Cluster Template](https://github.com/LoyaltyOne/ecs-cluster-akka)
 
 Docker Mirror supports the following two operations:
 
@@ -385,7 +385,7 @@ We will need to publish our new image using `sbt docker:publish`
 
 Now that we have solved the node addressability problem as well as seed node discovery we can configure our ECS Task Definition to run our application nodes as containers.
 
-Of course we need an ECS cluster to deploy our containers to. As we've previously mentioned in the post, we will use an existing Cloud Formation[Insert Link] template to deploy our cluster with Docker Mirror pre-installed.
+Of course we need an ECS cluster to deploy our containers to. As we've previously mentioned in the post, we will use an existing Cloud Formation [template](https://github.com/LoyaltyOne/ecs-cluster-akka) to deploy our cluster with Docker Mirror pre-installed.
 
 For our Task Definition there are a few important configurations:
 
