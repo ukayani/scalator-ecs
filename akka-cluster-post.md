@@ -77,16 +77,18 @@ Node A->Seed 1: Hello, anyone home?
 Node A->Seed 2: Hello, anyone home?
 note right of Seed 2: Seed 2 is first to respond
 Seed 2-->Node A: Hi, Node A
-Node A->Seed 2: May I join please?
+Node A->Seed 2: I'm joining!
 Seed 1-->Node A: ... Hi Node A
 note right of Node A: Node A ignores it
 note right of Seed 2: Tells everyone about Node A
 Seed 2->Seed 1: FYI, Node A is joining
 Seed 1-->Seed 2: Cool story bro!
 Seed 2-->Node A: You're in, homie!
-
+note right of Seed 2: Node A is now a member
 
 ```
+
+*A simplified example of a node joining a cluster with two nodes. Some details are omitted for simplicity*
 
 But how can a node join a cluster if it is the first node to join? Isn’t this a classic chicken and egg problem? As it turns out, the first seed node in the **seed list** of *all* nodes will send a join request to itself when it launches, becoming the first member of the cluster. It is thus important that all **seed lists **have the same first node.
 
