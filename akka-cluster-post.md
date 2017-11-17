@@ -26,7 +26,7 @@ Lets get some basic concepts out of the way:
 
 ### ECS Cluster
 
-Container instances group together to form an **ECS cluster**
+Container instances group together to form an **ECS Cluster**
 
 <img src="images/51CFA10A-3DB5-4A4E-90F5-712AFCC80562.png" alt="" width="600"/>
 
@@ -52,7 +52,7 @@ So how do all of these components fit together to deploy our dockerized services
 
 ### ECS Recap
 
-At its essence, ECS is a task scheduler where the tasks it creates map to running docker containers. It determines based on available resources, where to run your containers in an ECS Cluster. We will utilize this platform to run tasks for our clustered Akka application. Each running task will represent a node in our clustered application.
+At its essence, ECS is a task scheduler where the tasks it creates map to running docker containers. It determines based on available resources, where to run your containers in an ECS Cluster. We will utilize this platform to run tasks representing nodes in our clustered Akka application. 
 
 
 
