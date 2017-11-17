@@ -12,7 +12,7 @@ Before we dive into the specifics of Clustered Akka service deployments, lets go
 
 ## Amazon Elastic Container Service Detour
 
-Amazon ECS is a docker container orchestration service which makes it easy to run containers on a cluster of EC2 instances. Think of this cluster of EC2 instances as a pool of resources such as CPU and memory, where you run your containers without worrying about which underlying EC2 instance they run on. This concept is not new, there are other platforms such as Kubernetes and Docker Swarm which offer similar features. One of the reasons we selected ECS is because it is a service managed by Amazon rather than us. This means that our team can focus on deployment to the platform rather than maintenance of the platform.
+Amazon ECS is a Docker container orchestration service which makes it easy to run containers on a cluster of EC2 instances. Think of this cluster of EC2 instances as a pool of resources such as CPU and memory, where you run your containers without worrying about which underlying EC2 instance they run on. This concept is not new, there are other platforms such as Kubernetes and Docker Swarm which offer similar features. One of the reasons we selected ECS is because it is a service managed by Amazon rather than us. This means that our team can focus on deployment to the platform rather than maintenance of the platform.
 
 Lets get some basic concepts out of the way:
 
@@ -42,11 +42,11 @@ A task definition is like a recipe describing how to run your containers. It has
 
 
 
-Although a **task definition **describes how to run containers, we usually need some more functionality when running long lived services. For example, what happens if our container dies? How many instances of our containers should ECS run? How can we load balance traffic to multiple instances of our containers? 
+Although a **Task Definition **describes how to run containers, we usually need some more functionality when running long lived services. For example, what happens if our container dies? How many instances of our containers should ECS run? How can we load balance traffic to multiple instances of our containers? 
 
-### ECS Service
+### Service
 
-An **ECS Service** allows you to run and maintain a desired number of tasks. It ensures that if your tasks die, they are restarted. It also allows you to register your containers with a load balancer. 
+A **Service** in ECS allows you to run and maintain a desired number of tasks. It ensures that if your tasks die, they are restarted. It also allows you to register your containers with a load balancer. 
 
 So how do all of these components fit together to deploy our dockerized services? Simple, we issue a request to Amazon ECS and tell it to create a service to deploy. It will handle the creation of tasks from the specified Task Definition and run them on the pool of resources that is the ECS cluster.
 
@@ -430,9 +430,9 @@ Below is a snippet of a Task Definition from our CloudFormation [template](https
 
 We now have a description that ECS can use to run our containers. You'll notice our container also exposes port `8080` and binds it to a random port; we use this port to service HTTP traffic. We still need a way to specify the size of our cluster, we will do this by defining a Service in ECS.
 
-##### ECS Service
+##### Service
 
-Recall that an ECS Service helps maintain a desired number of tasks, nodes in our app. It is also responsible for handling service registration with a Load Balancer. 
+Recall that a Service in ECS helps maintain a desired number of tasks, nodes in our app. It is also responsible for handling service registration with a Load Balancer. 
 
 Below is a snippet of a Service Definition from our CloudFormation [template](https://github.com/LoyaltyOne/theatre-booking-akka-example/tree/master/env) used to run 3 nodes of our theatre application and register them with a load balancer:
 
