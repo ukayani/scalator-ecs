@@ -8,7 +8,7 @@ At LoyaltyOne, we recently started to containerize our services and deploy them 
 
 Our team maintains a service powered by a multi-node Akka cluster. Akka cluster enables us to build distributed, fault-tolerant services which can span multiple machines. Given our recent move to Docker, the team wanted to deploy our clustered service using the same platform we use for all services: Amazon ECS. In this post we will cover the basics of Amazon ECS along with a strategy for deploying clustered Akka applications on it.
 
-Before we dive into the specifics of Clustered Akka service deployments, lets go through some Amazon ECS basics:
+Before we dive into the specifics of Clustered Akka service deployments, let's go through some Amazon ECS basics:
 
 ## Amazon Elastic Container Service Detour
 
@@ -60,7 +60,7 @@ At its essence, ECS is a task scheduler where the tasks it creates map to runnin
 
 For our typical *stateless* services, switching to docker was relatively straightforward. The instances of these services do not need to know about each other, they simply accept requests behind a load balancer. The deployment of a clustered Akka application however, requires every instance (node in akka) to know about all other running instances in order to form a cluster.
 
-Before we dive into the deployments lets cover some basics of cluster formation in Akka:
+Before we dive into the deployments let's cover some basics of cluster formation in Akka:
 
 ### Cluster Formation Primer
 
@@ -113,7 +113,7 @@ We will discuss strategies to overcome these challenges under the constraints of
 
 ### Overview
 
-Our first step towards deployment will be to package our clustered application as a docker container and publish it to a Docker registry. We will use SBT to accomplish these steps.
+Our first step towards deployment will be to package our clustered application as a Docker container and publish it to a Docker registry. We will use SBT to accomplish these steps.
 
 Once our artifact is published we will tackle the problem of making nodes addressable across container instances. We will then run our nodes by creating a Task Definition and ECS Service.
 
@@ -179,7 +179,7 @@ As a default, when Docker containers are launched, they are connected to a virtu
 
 Why is this important? Well, when we run an Akka Cluster node within a Docker container, the default behaviour of the node is to advertise the address of it's binded interface (eth0) to other nodes.  
 
-Lets assume we have two hosts A and B on the same network, with Docker installed:
+Let's assume we have two hosts A and B on the same network, with Docker installed:
 
 ```bash
 Host A: eth0/10.0.1.2, docker0/172.17.0.0/16  
@@ -189,7 +189,10 @@ Host B: eth0/10.0.1.3, docker0/172.18.0.0/16
 For Host A, docker0 will assign IP addresses to containers in the range `172.17.0.0/16`
 For Host B, the range will be `172.18.0.0/16`
 
-Lets assume we have two nodes running on the hosts:
+Let's assume 
+
+- we have two nodes running on the hosts
+- each node has a seed list configured with the advertised address of the seed node *(we will see how to get this list later)*
 
 ```bash
 Containers
@@ -199,7 +202,7 @@ Node B: eth0/172.18.0.2  Port Bindings: 2552 -> 2552 (Seed)
 
 When Node A tries to join Node B to form a cluster, it will try to reach Node B at `172.18.0.2:2552`. For this to work, Host A would need to know how to route packets to `172.18.0.2`; which it doesn't. Unfortunately, ECS does not currently provide a routing mechanism for containers to directly address each other across host machines.
 
-How can we get around this problem? Luckily, Akka provides a way to advertise nodes on an address different than what they bind to. We need nodes to advertise themselves using the port and IP of their *host* rather than their container port and IP.
+How can we get around this problem? Conveniently, Akka provides a way to advertise nodes on an address different than what they bind to. We need nodes to advertise themselves using the port and IP of their *host* rather than their container port and IP.
 
 ##### Configuring Akka Remoting
 
