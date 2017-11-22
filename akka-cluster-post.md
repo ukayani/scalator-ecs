@@ -36,23 +36,31 @@ What we have so far is an ECS Cluster, but how do we tell ECS to run our dockeri
 
 ### Task Definition
 
-A task definition is like a recipe describing how to run your containers. It has information such as the ports to expose on the container, the memory and CPU to allocate as well as the Docker image from which to launch the container. A **task** is an instantiation of a task definition, it represents your running containers.
+A task definition is like a recipe describing how to run your containers. It has information such as the ports to expose on the container, the memory and CPU to allocate as well as the Docker image from which to launch the container. 
 
 ![Task Definition Alt](images/Task Definition Alt.png)*A Task Definition is essentially a way to specify parameters to supply to the docker run command*
 
+### Task
 
+A **Task** is a unit of running containers instantiated from a Task Definition
 
-Although a **Task Definition **describes how to run containers, we usually need some more functionality when running long lived services. For example, what happens if our container dies? How many instances of our containers should ECS run? How can we load balance traffic to multiple instances of our containers? 
+![E959E166-A330-4E51-AAB8-B91E25DF6C6E](images/E959E166-A330-4E51-AAB8-B91E25DF6C6E.png)
+
+*Tasks are run on container instances, they represent your running containers* 
+
+Although a **Task Definition **describes how to run containers, represented as tasks, we usually need some more functionality when running long lived services. For example, what happens if our container dies? How many instances of our containers should ECS run? How can we load balance traffic to multiple instances of our containers? 
 
 ### Service
 
-A **Service** in ECS allows you to run and maintain a desired number of tasks. It ensures that if your tasks die, they are restarted. It also allows you to register your containers with a load balancer. 
+A **Service** in ECS allows you to run and maintain a desired number of tasks. It ensures that if your tasks die, they are restarted. It also allows you to register your containers with a load balancer.  
 
 So how do all of these components fit together to deploy our dockerized services? Simple, we issue a request to Amazon ECS and tell it to create a service to deploy. It will handle the creation of tasks from the specified Task Definition and run them on the pool of resources that is the ECS cluster.
 
 ### ECS Recap
 
-At its essence, ECS is a task scheduler where the tasks it creates map to running docker containers. It determines based on available resources, where to run your containers in an ECS Cluster. We will utilize this platform to run tasks representing nodes in our clustered Akka application. 
+![ECSFittingTogether](images/ECSFittingTogether.gif)
+
+At its essence, ECS is a task scheduler where the tasks it creates map to running docker containers. It determines, based on available resources, where to run your tasks in the cluster.  We will utilize this platform to run tasks representing nodes in our clustered Akka application. 
 
 
 
@@ -80,7 +88,7 @@ Seed 2-->Node A: Hi, Node A
 Node A->Seed 2: I'm joining!
 Seed 1-->Node A: ... Hi Node A
 note right of Node A: Node A ignores it
-note right of Seed 2: Tells everyone about Node A
+note right of Seed 2: Tells everyone about Node A Joining
 Seed 2->Seed 1: FYI, Node A is joining
 Seed 1-->Seed 2: Cool story bro!
 Seed 2-->Node A: You're in, homie!
@@ -197,10 +205,14 @@ Let's assume
 ```bash
 Containers
 Node A: eth0/172.17.0.2  Port Bindings: 2552 -> 2552
-Node B: eth0/172.18.0.2  Port Bindings: 2552 -> 2552 (Seed)
+Node B: eth0/172.18.0.3  Port Bindings: 2552 -> 2552 (Seed)
 ```
 
-When Node A tries to join Node B to form a cluster, it will try to reach Node B at `172.18.0.2:2552`. For this to work, Host A would need to know how to route packets to `172.18.0.2`; which it doesn't. Unfortunately, ECS does not currently provide a routing mechanism for containers to directly address each other across host machines.
+![img](https://cdn-images-1.medium.com/max/1600/1*RPpp9gWiE2dvOoGPucmUWA.gif)
+
+
+
+When Node A tries to join Node B to form a cluster, it will try to reach Node B at `172.18.0.3:2552`. For this to work, Host A would need to know how to route packets to `172.18.0.3`; which it doesn't. Unfortunately, ECS does not currently provide a routing mechanism for containers to directly address each other across host machines.
 
 How can we get around this problem? Conveniently, Akka provides a way to advertise nodes on an address different than what they bind to. We need nodes to advertise themselves using the port and IP of their *host* rather than their container port and IP.
 
@@ -227,7 +239,7 @@ Now all we need to do is get the IP of the host and supply it to the Akka applic
 
 The host, a container instance, is really just an EC2 instance. To retrieve the IP of an EC2 instance Amazon provides a metadata endpoint which we can query to retrieve the IP.
 
-```
+```bash
 curl http://169.254.169.254/latest/meta-data/local-ipv4
 ```
 
@@ -245,10 +257,14 @@ Host B: eth0/10.0.1.3, docker0/172.18.0.0/16
 
 Containers
 Node A: eth0/172.17.0.2  Port Bindings: 2552 -> 2552
-Node B: eth0/172.18.0.2  Port Bindings: 2552 -> 2552 (Seed)
+Node B: eth0/172.18.0.3  Port Bindings: 2552 -> 2552 (Seed)
 ```
 
-Now, when Node A tries to join Node B to form a cluster, it will try to reach Node B at `10.0.1.3:2552`. Host A is now able to send packets to this address since it is in the same network as Host B. On Host B, since we have the Node B container bound to host port 2552, the Docker daemon has set up the necessary routing to direct traffic on this port to our container at `172.18.0.2:2552`. Nodes can now communicate with each other!
+![MultiHostPass](images/MultiHostPass.gif)
+
+
+
+Now, when Node A tries to join Node B to form a cluster, it will try to reach Node B at `10.0.1.3:2552`. Host A is now able to send packets to this address since it is in the same network as Host B. On Host B, since we have the Node B container bound to host port 2552, the Docker daemon has set up the necessary routing to direct traffic on this port to our container at `172.18.0.3:2552`. Nodes can now communicate with each other!
 
 So, what have we done so far to achieve node communication?
 
@@ -271,6 +287,10 @@ What if, when our containers launch, they could query a local service on the hos
 ##### Mirror, Mirror, On the Wall, What is My Host Port?
 
 We decided to create such a service; it is called **Docker Mirror**. It is intended to be run as a container on every host in the ECS Cluster, in the same bridge network as all containers. When a container needs to see it's port binding information, it can query Docker Mirror running on it's host machine to easily obtain this information. Instructions for how to run Docker Mirror in your cluster can be found at it's Github [README](https://github.com/LoyaltyOne/docker-mirror). We also have an Amazon CloudFormation template to launch an ECS Cluster with Docker Mirror at [ECS Cluster Template](https://github.com/LoyaltyOne/ecs-cluster-akka)
+
+![DockerMirror](images/DockerMirror.gif)
+
+*We omit a call to retrieve host IP from Docker Mirror for brevity*
 
 Docker Mirror supports the following two operations:
 
@@ -323,13 +343,13 @@ Now, when we launch our container, our application will have access to `HOST_IP`
 
 #### Seed Node Discovery
 
-As we discussed in our Cluster Formation Primer, every node in Akka needs to be configured with a list of seed nodes; this is specified by `akka.cluster.seed-nodes`. Every seed node address in this list consists of the node's IP, port and actor system name. To configure `seed-nodes` we could hard code a list of host IPs but we would also need to hard code ports; this would not work with our random port strategy. This strategy has downsides:
+As we discussed in our Cluster Formation Primer, every node in Akka needs to be configured with a list of seed nodes; this is specified by `akka.cluster.seed-nodes`. Every seed node address in this list consists of the node's IP, port and actor system name. To configure `seed-nodes` we could hard code a list of host IPs or DNS names but we would also need to hard code ports; this would not work with our random port strategy. This strategy has a number of downsides:
 
 - Seed node list is fixed, even if cluster grows or shrinks
 - Seed node ports need to be fixed, making it easy to have port conflicts when running multiple applications
-- Requires reconfiguring our Task Definition (docker paremeters) every time our host machines change IPs.
+- Requires specialized Task Definitions for seed nodes which force them to always run on the same machines 
 
-There are a number of solutions for this problem. Most of them involve some form of centralized seed list stored outside of the cluster nodes themselves. The idea is that when a node starts up, it checks the centralized list, tries to join the nodes in the list and then adds itself to the list. Writes to this list must be synchronized to avoid cluster formation pitfalls.
+There are a number of solutions for this problem. Most of them involve some form of centralized seed list stored outside of the cluster nodes themselves. The idea is that when a node starts up, it checks the centralized list, tries to join the nodes in the list and then adds itself to the list. If the list is empty, the node adds itself to the list and joins itself to form the cluster. Writes to this list must be synchronized to avoid cluster formation pitfalls.
 
 Two common options for this problem are:
 
@@ -337,6 +357,10 @@ Two common options for this problem are:
 - Etcd
 
 Both serve a similar purpose but we will use Zookeeper in our example.  Setting up a Zookeeper cluster is beyond the scope of this post but we have an AWS CloudFormation template to spin up a cluster in your AWS environment. Please read the [README](https://github.com/LoyaltyOne/bazooka/blob/master/cloudformation/README.md) for instructions to setup a Zookeeper cluster.
+
+![Zookeeper](images/Zookeeper.gif)
+
+*A simplified interaction with Zookeeper using ConstructR*
 
 ##### Adding Constructr
 
