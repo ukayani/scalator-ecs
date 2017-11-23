@@ -4,7 +4,7 @@ typora-copy-images-to: ./images
 
 # Deploying Clustered Akka applications on Amazon ECS
 
-At LoyaltyOne, we recently started to containerize our services and deploy them to Amazon ECS; a platform for running Docker containers. 
+At LoyaltyOne, we recently started to containerize our services and deploy them to [Amazon ECS](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html); a platform for running Docker containers. 
 
 Our team maintains a service powered by a multi-node Akka cluster. Akka cluster enables us to build distributed, fault-tolerant services which can span multiple machines. Given our recent move to Docker, the team wanted to deploy our clustered service using the same platform we use for all services: Amazon ECS. In this post we will cover the basics of Amazon ECS along with a strategy for deploying clustered Akka applications on it.
 
@@ -12,7 +12,7 @@ Before we dive into the specifics of Clustered Akka service deployments, let's g
 
 ## Amazon Elastic Container Service Detour
 
-Amazon ECS is a Docker container orchestration service which makes it easy to run containers on a cluster of EC2 instances. Think of this cluster of EC2 instances as a pool of resources such as CPU and memory, where you run your containers without worrying about which underlying EC2 instance they run on. This concept is not new, there are other platforms such as Kubernetes and Docker Swarm which offer similar features. One of the reasons we selected ECS is because it is a service managed by Amazon rather than us. This means that our team can focus on deployment to the platform rather than maintenance of the platform.
+Amazon ECS is a Docker container orchestration service which makes it easy to run containers on a cluster of EC2 instances. Think of this cluster of EC2 instances as a pool of resources such as CPU and memory, where you run your containers without worrying about which underlying EC2 instance they run on. This concept is not new, there are other platforms such as [Kubernetes](https://kubernetes.io) and [Docker Swarm](https://docs.docker.com/engine/swarm/) which offer similar features. One of the reasons we selected ECS is because it is a service managed by Amazon rather than us. This means that our team can focus on deployment to the platform rather than maintenance of the platform.
 
 Lets get some basic concepts out of the way:
 
@@ -36,7 +36,7 @@ What we have so far is an ECS Cluster, but how do we tell ECS to run our dockeri
 
 ### Task Definition
 
-A task definition is like a recipe describing how to run your containers. It has information such as the ports to expose on the container, the memory and CPU to allocate as well as the Docker image from which to launch the container. 
+A [Task Definition](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definitions.html) is like a recipe describing how to run your containers. It has information such as the ports to expose on the container, the memory and CPU to allocate as well as the Docker image from which to launch the container. 
 
 ![Task Definition Alt](images/Task Definition Alt.png)*A Task Definition is essentially a way to specify parameters to supply to the docker run command*
 
@@ -52,7 +52,7 @@ Although a **Task Definition **describes how to run containers, represented as t
 
 ### Service
 
-A **Service** in ECS allows you to run and maintain a desired number of tasks. It ensures that if your tasks die, they are restarted. It also allows you to register your containers with a load balancer.  
+A [**Service**](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs_services.html) in ECS allows you to run and maintain a desired number of tasks. It ensures that if your tasks die, they are restarted. It also allows you to register your containers with a load balancer.  
 
 So how do all of these components fit together to deploy our dockerized services? Simple, we issue a request to Amazon ECS and tell it to create a service to deploy. It will handle the creation of tasks from the specified Task Definition and run them on the pool of resources that is the ECS cluster.
 
@@ -100,6 +100,8 @@ note right of Seed 2: Node A is now a member
 
 But how can a node join a cluster if it is the first node to join? Isn’t this a classic chicken and egg problem? As it turns out, the first seed node in the **seed list** of *all* nodes will send a join request to itself when it launches, becoming the first member of the cluster. It is thus important that all **seed lists **have the same first node.
 
+For a more detailed treatment of cluster formation, consult the [Akka Cluster Docs](https://doc.akka.io/docs/akka/2.5/common/cluster.html?language=scala).
+
 ### The Challenge
 
 Now that we have an understanding of cluster formation we can discuss some of the challenges present when deploying to ECS:
@@ -115,7 +117,7 @@ We will discuss strategies to overcome these challenges under the constraints of
 - JDK8+
 - Docker
 - SBT
-- An existing ECS Cluster
+- An existing [ECS Cluster](https://github.com/LoyaltyOne/ecs-cluster-akka)
 - Access to an AWS Account
 - Working knowledge of Docker
 
@@ -131,7 +133,7 @@ We have created a sample clustered application which addresses the steps and cha
 
 #### Dockerizing Applications with SBT Native Packager
 
-Using the SBT Native Packager plugin it is trivial to package your applications as Docker containers. We can utilize any docker base image that has JRE 8 and bash installed.
+Using the [SBT Native Packager](http://www.scala-sbt.org/sbt-native-packager/formats/docker.html) plugin it is trivial to package your applications as Docker containers. We can utilize any docker base image that has JRE 8 and bash installed.
 
 Enable sbt native packager plugin to dockerize the application by adding the following to `project/plugins.sbt`:
 
@@ -183,7 +185,7 @@ Our image is now on DockerHub as `loyaltyone/theatre-example:latest`
 
 #### Making Nodes Addressable Across ECS Container Instances
 
-As a default, when Docker containers are launched, they are connected to a virtual bridge device called **docker0**. This bridge has an IP address range from which it assigns an IP to each container connected to it. Inside a container, it's **eth0** interface will be assigned the IP given by the bridge.  
+As a default, when Docker containers are launched, they are connected to a virtual bridge device called **[docker0](https://docs.docker.com/engine/userguide/networking/#default-networks)**. This bridge has an IP address range from which it assigns an IP to each container connected to it. Inside a container, it's **eth0** interface will be assigned the IP given by the bridge.  
 
 Why is this important? Well, when we run an Akka Cluster node within a Docker container, the default behaviour of the node is to advertise the address of it's binded interface (eth0) to other nodes.  
 
@@ -218,7 +220,7 @@ How can we get around this problem? Conveniently, Akka provides a way to adverti
 
 ##### Configuring Akka Remoting
 
-Akka Remoting handles the network level communication for Akka Cluster, so we will configure Akka Remoting. We can achieve the desired behaviour by configuring both a `hostname` and `bind-hostname` along with their port counterparts in `src/main/resources/application.conf`:
+[Akka Remoting](https://doc.akka.io/docs/akka/2.5/remoting.html?language=scala) handles the network level communication for Akka Cluster, so we will configure Akka Remoting. We can achieve the desired behaviour by configuring both a `hostname` and `bind-hostname` along with their port counterparts in `src/main/resources/application.conf`:
 
 ```
 akka.remote {
@@ -237,7 +239,7 @@ Now all we need to do is get the IP of the host and supply it to the Akka applic
 
 ##### Getting the Host IP
 
-The host, a container instance, is really just an EC2 instance. To retrieve the IP of an EC2 instance Amazon provides a metadata endpoint which we can query to retrieve the IP.
+The host, a container instance, is really just an EC2 instance. To retrieve the IP of an EC2 instance Amazon provides a [metadata endpoint](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html) which we can query to retrieve the IP.
 
 ```bash
 curl http://169.254.169.254/latest/meta-data/local-ipv4
@@ -286,7 +288,9 @@ What if, when our containers launch, they could query a local service on the hos
 
 ##### Mirror, Mirror, On the Wall, What is My Host Port?
 
-We decided to create such a service; it is called **Docker Mirror**. It is intended to be run as a container on every host in the ECS Cluster, in the same bridge network as all containers. When a container needs to see it's port binding information, it can query Docker Mirror running on it's host machine to easily obtain this information. Instructions for how to run Docker Mirror in your cluster can be found at it's Github [README](https://github.com/LoyaltyOne/docker-mirror). We also have an Amazon CloudFormation template to launch an ECS Cluster with Docker Mirror at [ECS Cluster Template](https://github.com/LoyaltyOne/ecs-cluster-akka)
+We decided to create such a service; it is called **Docker Mirror**. It is intended to be run as a container on every host in the ECS Cluster, in the same bridge network as all containers. Docker Mirror is able to obtain information about containers running on it's host by mounting the host's Docker socket. 
+
+When a container needs to see it's port binding information, it can query Docker Mirror running on it's host machine to easily obtain this information. Instructions for how to run Docker Mirror in your cluster can be found at it's Github [README](https://github.com/LoyaltyOne/docker-mirror). We also have an Amazon CloudFormation template to launch an ECS Cluster with Docker Mirror at [ECS Cluster Template](https://github.com/LoyaltyOne/ecs-cluster-akka)
 
 ![DockerMirror](images/DockerMirror.gif)
 
@@ -301,7 +305,7 @@ The first call would return the host IP address. For the second call, we supply 
 
 ##### Updating Our Docker Image to Use Docker Mirror
 
-To use Docker Mirror, we need to update our application's Docker image to make the necessary calls to Docker Mirror to get its `HOST_IP` and `HOST_PORT`. We can create a script which does these calls and run it in our container's entrypoint[link here].
+To use Docker Mirror, we need to update our application's Docker image to make the necessary calls to Docker Mirror to get its `HOST_IP` and `HOST_PORT`. We can create a script which does these calls and run it in our container's [entrypoint](https://docs.docker.com/engine/reference/builder/#entrypoint).
 
 In order to communicate with Docker Mirror, we can direct our requests to the host's IP and the host port to which Docker Mirror is bound. In our example, Docker Mirror is running on host port `9001`.
 
@@ -328,7 +332,7 @@ export HOST_IP=$(curl $DOCKER_MIRROR/hostip)
 export HOST_PORT=$(curl $DOCKER_MIRROR/container/$HOSTNAME/port/$APP_PORT)
 ```
 
-To avoid writing this boilerplate bootstrap logic in all of your container images, we've published a base image which contains this logic at `loyaltyone/dakka`.
+To avoid writing this boilerplate bootstrap logic in all of your container images, we've published a base image which contains this logic at [`loyaltyone/dakka`](https://hub.docker.com/r/loyaltyone/dakka/).
 
 **Updating our build.sbt**
 
@@ -353,18 +357,20 @@ There are a number of solutions for this problem. Most of them involve some form
 
 Two common options for this problem are:
 
-- Apache Zookeeper
-- Etcd
+- [Apache Zookeeper](https://zookeeper.apache.org)
+- [Etcd](https://coreos.com/etcd/)
 
 Both serve a similar purpose but we will use Zookeeper in our example.  Setting up a Zookeeper cluster is beyond the scope of this post but we have an AWS CloudFormation template to spin up a cluster in your AWS environment. Please read the [README](https://github.com/LoyaltyOne/bazooka/blob/master/cloudformation/README.md) for instructions to setup a Zookeeper cluster.
+
+
+
+##### Adding Constructr
+
+[Constructr](https://github.com/hseeberger/constructr) is an extension for Akka which handles seed node discovery and ultimately cluster formation. It supports both Zookeeper and Etcd as backends.
 
 ![Zookeeper](images/Zookeeper.gif)
 
 *A simplified interaction with Zookeeper using ConstructR*
-
-##### Adding Constructr
-
-Constructr is an extension for Akka which handles seed node discovery and ultimately cluster formation. It supports both Zookeeper and Etcd as backends.
 
 First, we need to add all necessary constructr dependencies to our applications `build.sbt`
 
